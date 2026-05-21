@@ -1,0 +1,14 @@
+*.o
+*.d
+*.crf
+*.axf
+*.htm
+*.lnp
+*.sct
+*.lst
+*.map
+*.dep
+*.bak
+*.__i
+*.uvgui.*
+项目.uvguix.*
