@@ -18,6 +18,7 @@ extern float Target_Left, Target_Right;
 void PID_Init(void);
 int16_t PID_Calculate(PID_TypeDef *pid, float target, float actual);
 void ControlTimer_Init(void);
+void PID_Reset(void);
 
 #endif
 

@@ -10,6 +10,7 @@
 #include "Ultersound.h"
 #include <string.h>
 #include <stdio.h>
+#include "Infrared.h"
 
 extern PID_TypeDef PID_Left, PID_Right;
 extern float Target_Left, Target_Right;
@@ -19,6 +20,8 @@ extern volatile uint8_t  Echo_State;
 extern volatile uint16_t High_Time;     
 extern volatile uint8_t  Distance_Ready;
 
+void Car_Avoidance_Logic(void);
+
 int main(void)
 {
     Motor_Init();
@@ -26,35 +29,21 @@ int main(void)
     Encoder_Init_Right();   
     Serial_Init();
     Car_Init();
+		Infrared_Init();
     
     PWM_Init2();
     Ultrasound_Init();
     Servo_Init();
     PID_Init();            
-  
-	
-    float distance = 0.0f;
-    uint32_t ultrasound_count = 0;
-	
+
     Serial_Printf("System Ready! Use 0x37/0x38 to tune Kp.\r\n");
 	
     while(1)
     {
-        ultrasound_count++;
-        if(ultrasound_count >= 400000) 
-        {
-            Ultrasound_Trigger(); 
-            ultrasound_count = 0;
-        }
-		
-        distance = Ultrasound_GetDistance();
-		
-
-        if(distance < 20.0f)
-        {
-            Car_Stop(); 
-        }
-        Serial_SendNumber(distance, 3);
+//      Car_Avoidance_Logic();
+			
+			Infrared_Track();
+     
     }
 }
 
@@ -68,20 +57,20 @@ void USART1_IRQHandler(void)
             case 0x30 : Car_Stop();         break; 
             case 0x31 : Go_Ahead();         break;
             case 0x32 : Go_Back();          break;
-            case 0x33 : Turn_Left();        break;
-            case 0x34 : Turn_Right();       break;
-            case 0x35 : Turn_Back_Left();   break;
-            case 0x36 : Turn_Back_Right();  break;
+            case 0x33 : Self_Left();        break;
+            case 0x34 : Self_Right();       break;
+            case 0x35 : Self_Left();   			break;
+            case 0x36 : Self_Right(); 			break;
+						
 			
-          
             /*
-            case 0x37 : 
+            case 0x40 : 
                 PID_Left.Kp += 1.0f;  
                 PID_Right.Kp += 1.0f;
                 Serial_Printf("Kp Up: %.1f\r\n", PID_Left.Kp);
                 break;
                 
-            case 0x38 : 
+            case 0x41 : 
                 if(PID_Left.Kp > 0) { 
                     PID_Left.Kp -= 1.0f; 
                     PID_Right.Kp -= 1.0f;
@@ -89,13 +78,13 @@ void USART1_IRQHandler(void)
                 Serial_Printf("Kp Down: %.1f\r\n", PID_Left.Kp);
                 break;
                 
-            case 0x39 : 
+            case 0x42 : 
                 PID_Left.Ki += 0.2f;  
                 PID_Right.Ki += 0.2f;
                 Serial_Printf("Ki Up: %.1f\r\n", PID_Left.Ki);
                 break;
 			
-            case 0x3A : 
+            case 0x43 : 
                 if(PID_Left.Ki >= 0.2){
                     PID_Left.Ki -= 0.2f;  
                     PID_Right.Ki -= 0.2f;
@@ -103,7 +92,7 @@ void USART1_IRQHandler(void)
                 }
                 break;
 
-            case 0x3B : 
+            case 0x44 : 
                 if(PID_Left.Kd >= 0.2){
                     PID_Left.Kd -= 0.2f;  
                     PID_Right.Kd -= 0.2f;
@@ -111,16 +100,17 @@ void USART1_IRQHandler(void)
                 }
                 break;
 			
-            case 0x3C : 
+            case 0x45 : 
                 PID_Left.Kd += 0.2f;  
                 PID_Right.Kd += 0.2f;
                 Serial_Printf("Kd Up: %.1f\r\n", PID_Left.Ki);
                 break;
             */
-				
-            case 0x3D : Servo_SetAngle(0);   break;
-            case 0x3E : Servo_SetAngle(90);  break;
-            case 0x3F : Servo_SetAngle(180); break;
+						
+						case 0x50 : Servo_SetAngle(0);   break;
+            case 0x51 : Servo_SetAngle(90);  break;
+            case 0x52 : Servo_SetAngle(180); break;
+           
 				
             default: break;
         }
@@ -165,4 +155,61 @@ void TIM2_IRQHandler(void)
         
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC3); 
     }
+}
+
+void Car_Avoidance_Logic(void){
+	float distance = 0.0f;
+  static uint32_t ultrasound_count = 0;
+	ultrasound_count++;
+        if(ultrasound_count >= 400000) 
+        {
+            Ultrasound_Trigger(); 
+            ultrasound_count = 0;
+        }
+		
+        distance = Ultrasound_GetDistance();
+		    Serial_SendNumber(distance, 3);
+
+        if(distance < 10.0f)
+        {
+          Car_Stop(); 
+					Servo_SetAngle(0);
+					Delay_ms(600);
+					Ultrasound_Trigger();
+					Delay_ms(40);
+					uint16_t RightDistance = Ultrasound_GetDistance();
+					Serial_SendNumber(RightDistance, 3);
+					
+					if(RightDistance > 10.0f){
+						Servo_SetAngle(90);
+						Delay_ms(600);
+						Self_Right();
+						Delay_ms(1000);
+						Go_Ahead();			
+					}
+					else{
+						Servo_SetAngle(180);
+						Delay_ms(600);
+						
+						Ultrasound_Trigger();
+						Delay_ms(40);
+						uint16_t LeftDistance = Ultrasound_GetDistance();
+						Serial_SendNumber(LeftDistance, 3);
+						
+						if(LeftDistance > 10.0f){
+							Servo_SetAngle(90);
+							Delay_ms(600);
+							Self_Left();
+							Delay_ms(1000);
+							Go_Ahead();			
+						}
+						else{
+							Servo_SetAngle(90);
+							Self_Left();
+							Delay_ms(2000);
+							Go_Ahead();
+						}
+					}
+        }
+	
 }

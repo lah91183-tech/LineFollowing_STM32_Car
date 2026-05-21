@@ -2,47 +2,80 @@
 #include "Motor.h"
 #include "Delay.h"
 #include "Car1.h"
+#include "PIDcontrol.h"
 
 extern float Target_Left, Target_Right;
+static uint8_t Car_State = 0;
 
 void Car_Init(void){
 	Motor_Init();
 }
 
+void Car_Stop(void){
+	if (Car_State != 0) {
+		Target_Left = 0.0f;
+		Target_Right = 0.0f;
+		PID_Reset();
+		Car_State = 0; 
+	}
+}
+
 void Go_Ahead(void){
-	Target_Left = 25.0f;   
-    Target_Right = 25.0f;
+	if (Car_State != 1) {
+		Target_Left = 25.0f;   
+		Target_Right = 25.0f;
+		PID_Reset();
+		Car_State = 1; 
+	}
 }
 
 void Go_Back(void){
-	Target_Left = -25.0f;
-    Target_Right = -25.0f;
+	if (Car_State != 2) {
+		Target_Left = -25.0f;
+		Target_Right = -25.0f;
+		PID_Reset();
+		Car_State = 2;
+	}
+}
+
+void Self_Left(void){
+	if (Car_State != 3) {
+		Target_Left = -15.0f;  
+		Target_Right = 15.0f;
+		PID_Reset();
+		Car_State = 3;
+	}
+}
+
+void Self_Right(void){
+	if (Car_State != 4) {
+		Target_Left = 15.0f;   
+		Target_Right = -15.0f;
+		PID_Reset();
+		Car_State = 4;
+	}
 }
 
 void Turn_Left(void){
-	Target_Left = -15.0f;  
-    Target_Right = 15.0f;
+	if (Car_State != 5) {
+		Target_Left = 0.0f;  
+		Target_Right = 15.0f;
+		PID_Reset();
+		Car_State = 5;
+	}
 }
 
 void Turn_Right(void){
-	Target_Left = 15.0f;   
-    Target_Right = -15.0f;
+	if (Car_State != 6) {
+		Target_Left = 15.0f;   
+		Target_Right = 0.0f;
+		PID_Reset();
+		Car_State = 6;
+	}
 }
 
-void Turn_Back_Left(void){
-	Target_Left = -10.0f;
-    Target_Right = -25.0f;
-}
 
-void Turn_Back_Right(void){
-	Target_Left = -25.0f;
-    Target_Right = -10.0f;
-}
 
-void Car_Stop(void){
-	Target_Left = 0.0f;
-    Target_Right = 0.0f;
-}
 
 
 
